@@ -51,15 +51,6 @@ class Cache:
         ]
 
 
-def print_all(config, trace):
-    print("=== Config ===")
-    for key, val in config.items():
-        print(f"  {key}: {val}")
-    print("\n=== Trace ===")
-    for i, (addr, action) in enumerate(trace):
-        print(f"  [{i}] addr={addr}  action={action}")
-
-
 def get_set_index(addr, cache):
     return (int(addr, 16) // cache.line_size) % cache.num_sets
 
@@ -108,6 +99,17 @@ def execute(addr, action, l1, l2):
         update_lru(l1, addr)
         load_into_cache(l2, addr)
         update_lru(l2, addr)
+
+    elif action == 'W':
+        if find_in_cache(l1, addr):
+            print("L1HIT")
+            update_lru(l1, addr)
+            return
+        if find_in_cache(l2, addr):
+            print("L2HIT")
+            update_lru(l2, addr)
+            return
+        print("MEMACC")
 
 
 def main():
