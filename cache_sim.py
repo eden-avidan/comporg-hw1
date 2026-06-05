@@ -66,6 +66,11 @@ def find_in_cache(cache, addr):
     return any(way[set_idx][0] == block_id for way in cache.ways)
 
 
+def find_block_in_cache(cache, block_id):
+    set_idx = block_id % cache.num_sets
+    return any(way[set_idx][0] == block_id for way in cache.ways)
+
+
 def load_into_cache(cache, addr):
     """Returns the evicted block_id, or None if an empty slot was used."""
     block_id = get_block_id(addr, cache)
@@ -118,7 +123,7 @@ def execute(addr, action, l1, l2, inclusive, out):
         update_lru(l1, addr)
         evicted = load_into_cache(l2, addr)
         update_lru(l2, addr)
-        if inclusive and evicted and find_in_cache(l1, evicted):
+        if inclusive and evicted is not None and find_block_in_cache(l1, evicted):
             evict_from_cache(l1, evicted)
 
     elif action == 'W':
