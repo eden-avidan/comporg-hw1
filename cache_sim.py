@@ -61,15 +61,26 @@ def find_in_cache(cache, addr):
 
 
 def load_into_cache(cache, addr):
+    """Returns the evicted address, or None if an empty slot was used."""
     set_idx = get_set_index(addr, cache)
-    # prefer empty slot first, then evict LRU (counter == 0)
     for way in cache.ways:
         if way[set_idx][0] is None:
             way[set_idx][0] = addr
-            return
+            return None
     for way in cache.ways:
         if way[set_idx][1] == 0:
+            evicted = way[set_idx][0]
             way[set_idx][0] = addr
+            return evicted
+    return None
+
+
+def evict_from_cache(cache, addr):
+    set_idx = get_set_index(addr, cache)
+    for way in cache.ways:
+        if way[set_idx][0] == addr:
+            way[set_idx][0] = None
+            way[set_idx][1] = 0
             return
 
 
@@ -82,7 +93,7 @@ def update_lru(cache, addr):
             way[set_idx][1] -= 1
 
 
-def execute(addr, action, l1, l2):
+def execute(addr, action, l1, l2, inclusive):
     if action == 'R':
         if find_in_cache(l1, addr):
             print("L1HIT")
@@ -97,8 +108,10 @@ def execute(addr, action, l1, l2):
         print("MEMACC")
         load_into_cache(l1, addr)
         update_lru(l1, addr)
-        load_into_cache(l2, addr)
+        evicted = load_into_cache(l2, addr)
         update_lru(l2, addr)
+        if inclusive and evicted and find_in_cache(l1, evicted):
+            evict_from_cache(l1, evicted)
 
     elif action == 'W':
         if find_in_cache(l1, addr):
@@ -126,8 +139,9 @@ def main():
     l1 = Cache(config["L1_NUM_WAYS"], config["L1_DATA_SIZE"], line_size)
     l2 = Cache(config["L2_NUM_WAYS"], config["L2_DATA_SIZE"], line_size)
 
+    inclusive = config["CACHE_INCLUSIVE"]
     for addr, action in trace:
-        execute(addr, action, l1, l2)
+        execute(addr, action, l1, l2, inclusive)
 
 
 if __name__ == "__main__":
