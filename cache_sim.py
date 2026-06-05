@@ -47,6 +47,10 @@ def print_all(config, trace):
         print(f"  [{i}] addr={addr}  action={action}")
 
 
+def execute(addr, action):
+    print(f"executing: addr={addr}, action={action}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Cache Simulator")
     parser.add_argument("config_file", help="Cache configuration file (.txt)")
@@ -57,7 +61,8 @@ def main():
     config = parse_config(args.config_file)
     trace = parse_trace(args.trace_file)
 
-    print_all(config, trace)
+    for addr, action in trace:
+        execute(addr, action)
 
 
 if __name__ == "__main__":
