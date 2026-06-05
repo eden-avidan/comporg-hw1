@@ -51,43 +51,51 @@ class Cache:
         ]
 
 
+def get_block_id(addr, cache):
+    """Block number — uniquely identifies a cache block, shared by all addresses in the same line."""
+    return int(addr, 16) // cache.line_size
+
+
 def get_set_index(addr, cache):
-    return (int(addr, 16) // cache.line_size) % cache.num_sets
+    return get_block_id(addr, cache) % cache.num_sets
 
 
 def find_in_cache(cache, addr):
+    block_id = get_block_id(addr, cache)
     set_idx = get_set_index(addr, cache)
-    return any(way[set_idx][0] == addr for way in cache.ways)
+    return any(way[set_idx][0] == block_id for way in cache.ways)
 
 
 def load_into_cache(cache, addr):
-    """Returns the evicted address, or None if an empty slot was used."""
+    """Returns the evicted block_id, or None if an empty slot was used."""
+    block_id = get_block_id(addr, cache)
     set_idx = get_set_index(addr, cache)
     for way in cache.ways:
         if way[set_idx][0] is None:
-            way[set_idx][0] = addr
+            way[set_idx][0] = block_id
             return None
     for way in cache.ways:
         if way[set_idx][1] == 0:
             evicted = way[set_idx][0]
-            way[set_idx][0] = addr
+            way[set_idx][0] = block_id
             return evicted
     return None
 
 
-def evict_from_cache(cache, addr):
-    set_idx = get_set_index(addr, cache)
+def evict_from_cache(cache, block_id):
+    set_idx = block_id % cache.num_sets
     for way in cache.ways:
-        if way[set_idx][0] == addr:
+        if way[set_idx][0] == block_id:
             way[set_idx][0] = None
             way[set_idx][1] = 0
             return
 
 
 def update_lru(cache, addr):
+    block_id = get_block_id(addr, cache)
     set_idx = get_set_index(addr, cache)
     for way in cache.ways:
-        if way[set_idx][0] == addr:
+        if way[set_idx][0] == block_id:
             way[set_idx][1] = cache.num_ways - 1
         elif way[set_idx][0] is not None and way[set_idx][1] > 0:
             way[set_idx][1] -= 1
