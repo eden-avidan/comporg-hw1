@@ -93,19 +93,19 @@ def update_lru(cache, addr):
             way[set_idx][1] -= 1
 
 
-def execute(addr, action, l1, l2, inclusive):
+def execute(addr, action, l1, l2, inclusive, out):
     if action == 'R':
         if find_in_cache(l1, addr):
-            print("L1HIT")
+            out.write("L1HIT\n")
             update_lru(l1, addr)
             return
         if find_in_cache(l2, addr):
-            print("L2HIT")
+            out.write("L2HIT\n")
             update_lru(l2, addr)
             load_into_cache(l1, addr)
             update_lru(l1, addr)
             return
-        print("MEMACC")
+        out.write("MEMACC\n")
         load_into_cache(l1, addr)
         update_lru(l1, addr)
         evicted = load_into_cache(l2, addr)
@@ -115,14 +115,14 @@ def execute(addr, action, l1, l2, inclusive):
 
     elif action == 'W':
         if find_in_cache(l1, addr):
-            print("L1HIT")
+            out.write("L1HIT\n")
             update_lru(l1, addr)
             return
         if find_in_cache(l2, addr):
-            print("L2HIT")
+            out.write("L2HIT\n")
             update_lru(l2, addr)
             return
-        print("MEMACC")
+        out.write("MEMACC\n")
 
 
 def main():
@@ -140,8 +140,9 @@ def main():
     l2 = Cache(config["L2_NUM_WAYS"], config["L2_DATA_SIZE"], line_size)
 
     inclusive = config["CACHE_INCLUSIVE"]
-    for addr, action in trace:
-        execute(addr, action, l1, l2, inclusive)
+    with open(args.output_file, 'w') as out:
+        for addr, action in trace:
+            execute(addr, action, l1, l2, inclusive, out)
 
 
 if __name__ == "__main__":
