@@ -60,8 +60,54 @@ def print_all(config, trace):
         print(f"  [{i}] addr={addr}  action={action}")
 
 
-def execute(addr, action):
-    print(f"executing: addr={addr}, action={action}")
+def get_set_index(addr, cache):
+    return (int(addr, 16) // cache.line_size) % cache.num_sets
+
+
+def find_in_cache(cache, addr):
+    set_idx = get_set_index(addr, cache)
+    return any(way[set_idx][0] == addr for way in cache.ways)
+
+
+def load_into_cache(cache, addr):
+    set_idx = get_set_index(addr, cache)
+    # prefer empty slot first, then evict LRU (counter == 0)
+    for way in cache.ways:
+        if way[set_idx][0] is None:
+            way[set_idx][0] = addr
+            return
+    for way in cache.ways:
+        if way[set_idx][1] == 0:
+            way[set_idx][0] = addr
+            return
+
+
+def update_lru(cache, addr):
+    set_idx = get_set_index(addr, cache)
+    for way in cache.ways:
+        if way[set_idx][0] == addr:
+            way[set_idx][1] = cache.num_ways - 1
+        elif way[set_idx][0] is not None and way[set_idx][1] > 0:
+            way[set_idx][1] -= 1
+
+
+def execute(addr, action, l1, l2):
+    if action == 'R':
+        if find_in_cache(l1, addr):
+            print("L1HIT")
+            update_lru(l1, addr)
+            return
+        if find_in_cache(l2, addr):
+            print("L2HIT")
+            update_lru(l2, addr)
+            load_into_cache(l1, addr)
+            update_lru(l1, addr)
+            return
+        print("MEMACC")
+        load_into_cache(l1, addr)
+        update_lru(l1, addr)
+        load_into_cache(l2, addr)
+        update_lru(l2, addr)
 
 
 def main():
@@ -79,7 +125,7 @@ def main():
     l2 = Cache(config["L2_NUM_WAYS"], config["L2_DATA_SIZE"], line_size)
 
     for addr, action in trace:
-        execute(addr, action)
+        execute(addr, action, l1, l2)
 
 
 if __name__ == "__main__":
